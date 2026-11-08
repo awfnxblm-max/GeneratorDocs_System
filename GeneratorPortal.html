@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Портал Сервисного Обслуживания Генераторов - ASP Style</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- jsPDF for direct PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        asp: {
+                            blue: '#004DB3',
+                            hover: '#003A8C',
+                            light: '#EBF3FF',
+                            accent: '#2563EB',
+                            bg: '#F4F7FA',
+                            card: '#FFFFFF',
+                            text: '#1E293B',
+                            muted: '#64748B'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #F4F7FA;
+            font-family: 'Inter', sans-serif;
+            color: #1E293B;
+        }
+        .asp-card-hover {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .asp-card-hover:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px -8px rgba(0, 77, 179, 0.12);
+        }
+        body.auth-pending > :not(#auth-overlay) {
+            visibility: hidden !important;
+        }
+        [hidden] {
+            display: none !important;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col auth-pending">
+
+    <!-- Password Authentication Overlay -->
+    <div id="auth-overlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950 px-4" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+        <div class="w-full max-w-sm rounded-2xl bg-white p-7 shadow-2xl">
+            <div class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-asp-light text-asp-blue">
+                <i class="fa-solid fa-lock text-xl"></i>
+            </div>
+            <h1 id="auth-title" class="text-center text-xl font-bold text-slate-800">Доступ к порталу</h1>
+            <p class="mt-2 text-center text-sm text-slate-500">Введите пароль для продолжения</p>
+            <form id="auth-form" class="mt-6">
+                <label for="auth-password" class="mb-2 block text-sm font-medium text-slate-700">Пароль</label>
+                <input id="auth-password" type="password" autocomplete="current-password" class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-asp-blue focus:ring-2 focus:ring-blue-100" placeholder="Введите пароль">
+                <p id="auth-error" class="mt-2 hidden text-sm font-medium text-red-600" role="alert">Неверный пароль</p>
+                <button type="submit" class="mt-5 w-full rounded-xl bg-asp-blue px-4 py-3 font-semibold text-white transition hover:bg-asp-hover focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2">
+                    Войти
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="showView('home')">
+                <div class="w-10 h-10 bg-asp-blue rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md shadow-blue-500/20">
+                    <i class="fa-solid fa-file-contract"></i>
+                </div>
+                <div>
+                    <div class="text-xs font-semibold tracking-wider text-asp-blue uppercase">Единый Портал Документов</div>
+                    <div class="text-base font-bold text-slate-800 leading-tight">Обслуживание Генераторов</div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <button onclick="openSettingsModal()" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-asp-blue hover:bg-asp-light rounded-lg transition-colors flex items-center space-x-2">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span class="hidden sm:inline">Настройки шаблона</span>
+                </button>
+                <div class="h-6 w-px bg-slate-200"></div>
+                <div class="flex items-center space-x-2 bg-slate-100 px-3 py-1.5 rounded-full text-xs font-medium text-slate-600">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Сервер активен</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- VIEW 1: HOME (CATALOGUE OF SERVICES) -->
+        <div id="view-home" class="space-y-8">
+            <!-- Hero Banner -->
+            <div class="bg-gradient-to-r from-asp-blue to-blue-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+                <div class="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 pointer-events-none flex items-center justify-end pr-8">
+                    <i class="fa-solid fa-bolt text-9xl"></i>
+                </div>
+                <div class="max-w-2xl relative z-10">
+                    <span class="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold uppercase tracking-wider mb-3">
+                        ASP Document Hub v2.4
+                    </span>
+                    <h1 class="text-2xl sm:text-3xl font-bold mb-2">Генерация сервисных документов</h1>
+                    <p class="text-blue-100 text-sm sm:text-base mb-6">
+                        Автоматизированный расчет стоимости технического обслуживания генераторов и мгновенное формирование коммерческих предложений и договоров.
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="navigateToForm('oferta_fara_tva')" class="bg-white text-asp-blue font-semibold px-5 py-2.5 rounded-xl hover:bg-blue-50 transition-colors shadow-md flex items-center space-x-2">
+                            <span>Оформить Ofertă fără TVA</span>
+                            <i class="fa-solid fa-arrow-right text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fast Action Banner Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white rounded-xl p-5 border border-slate-200/80 shadow-sm flex items-start space-x-4">
+                    <div class="p-3 bg-blue-50 text-asp-blue rounded-xl text-xl">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-800 text-sm">Автоматический расчет</h4>
+                        <p class="text-xs text-slate-500 mt-1">Точный подсчет расходных материалов, антифриза и работ без ошибок</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-5 border border-slate-200/80 shadow-sm flex items-start space-x-4">
+                    <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-xl">
+                        <i class="fa-solid fa-file-pdf"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-800 text-sm">Готовый PDF в 1 клик</h4>
+                        <p class="text-xs text-slate-500 mt-1">Скачивание готового файла с подстановкой всех параметров клиента</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-5 border border-slate-200/80 shadow-sm flex items-start space-x-4">
+                    <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl text-xl">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-800 text-sm">Стандарт ASP</h4>
+                        <p class="text-xs text-slate-500 mt-1">Официальная форма коммерческих условий для генераторов</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 1: Шаблоны без НДС -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2.5 h-6 bg-asp-blue rounded-full"></div>
+                        <h2 class="text-xl font-bold text-slate-800">Шаблоны без НДС</h2>
+                    </div>
+                    <span class="text-xs text-slate-500">1 активный шаблон</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Active Card: Ofertă fără TVA -->
+                    <div onclick="navigateToForm('oferta_fara_tva')" class="bg-white border border-slate-200 rounded-2xl p-6 asp-card-hover cursor-pointer relative flex flex-col justify-between group">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-full text-xs font-semibold flex items-center space-x-1.5">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span>Активен</span>
+                                </span>
+                                <span class="text-xs font-mono text-slate-400">ID: DOC-01</span>
+                            </div>
+                            <div class="w-12 h-12 bg-asp-light text-asp-blue rounded-xl flex items-center justify-center text-xl mb-4 group-hover:bg-asp-blue group-hover:text-white transition-colors">
+                                <i class="fa-solid fa-file-invoice-dollar"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-2 group-hover:text-asp-blue transition-colors">
+                                Коммерческое предложение
+                            </h3>
+                            <p class="text-xs font-semibold text-slate-500 mb-3">Ofertă fără TVA (Без НДС)</p>
+                            <p class="text-xs text-slate-500 leading-relaxed mb-6">
+                                Расчет стоимости расходных материалов (масло, фильтры, антифриз) и сервисных работ по ТО генератора.
+                            </p>
+                        </div>
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-asp-blue">
+                            <span>Заполнить и сгенерировать</span>
+                            <i class="fa-solid fa-chevron-right group-hover:translate-x-1 transition-transform"></i>
+                        </div>
+                    </div>
+
+                    <!-- In Development Card: Договор ТУ -->
+                    <div class="bg-white/70 border border-slate-200/80 rounded-2xl p-6 relative flex flex-col justify-between opacity-75">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-full text-xs font-semibold">
+                                    В разработке
+                                </span>
+                                <span class="text-xs font-mono text-slate-400">ID: DOC-02</span>
+                            </div>
+                            <div class="w-12 h-12 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center text-xl mb-4">
+                                <i class="fa-solid fa-file-signature"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-slate-700 mb-2">
+                                Договор ТО без НДС
+                            </h3>
+                            <p class="text-xs font-semibold text-slate-400 mb-3">Contract Servicii fără TVA</p>
+                            <p class="text-xs text-slate-400 leading-relaxed mb-6">
+                                Полный юридический договор регулярного сервисного обслуживания на 12 месяцев.
+                            </p>
+                        </div>
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-400">
+                            <span>Скоро будет доступен</span>
+                            <i class="fa-solid fa-lock"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Шаблоны с НДС -->
+            <div class="space-y-4 pt-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2.5 h-6 bg-slate-400 rounded-full"></div>
+                        <h2 class="text-xl font-bold text-slate-800">Шаблоны с НДС (TVA 20%)</h2>
+                    </div>
+                    <span class="text-xs text-slate-500">В процессе подготовки</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- In Development Card: Ofertă cu TVA -->
+                    <div class="bg-white/70 border border-slate-200/80 rounded-2xl p-6 relative flex flex-col justify-between opacity-75">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">
+                                    Планируется
+                                </span>
+                                <span class="text-xs font-mono text-slate-400">ID: DOC-03</span>
+                            </div>
+                            <div class="w-12 h-12 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center text-xl mb-4">
+                                <i class="fa-solid fa-file-invoice"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-slate-700 mb-2">
+                                Коммерческое предложение
+                            </h3>
+                            <p class="text-xs font-semibold text-slate-400 mb-3">Ofertă cu TVA (с НДС 20%)</p>
+                            <p class="text-xs text-slate-400 leading-relaxed mb-6">
+                                Стандартное коммерческое предложение с автоматическим выделением НДС 20%.
+                            </p>
+                        </div>
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-400">
+                            <span>Скоро появится</span>
+                            <i class="fa-solid fa-lock"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- VIEW 2: FORM FOR OFFERTA FARA TVA -->
+        <div id="view-form" class="hidden space-y-6">
+            <!-- Breadcrumbs Navigation -->
+            <nav class="flex items-center space-x-2 text-xs text-slate-500 font-medium">
+                <span onclick="showView('home')" class="hover:text-asp-blue cursor-pointer flex items-center space-x-1">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Главная</span>
+                </span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-300"></i>
+                <span>Шаблоны без НДС</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-300"></i>
+                <span class="text-asp-blue font-semibold">Ofertă fără TVA</span>
+            </nav>
+
+            <!-- Form Title Banner -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2.5 py-0.5 bg-asp-light text-asp-blue rounded-md text-xs font-bold uppercase">Шаблон Ofertă_fara_TVA</span>
+                        <span class="text-xs text-slate-400">Google Docs Sync Ready</span>
+                    </div>
+                    <h1 class="text-2xl font-bold text-slate-800 mt-1">Оформление КП на обслуживание генератора</h1>
+                    <p class="text-xs text-slate-500 mt-1">Заполните поля ниже. Все расчеты сумм производятся автоматически.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button type="button" onclick="resetForm()" class="px-3.5 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                        <i class="fa-solid fa-rotate-left mr-1.5"></i> Очистить форму
+                    </button>
+                </div>
+            </div>
+
+            <!-- Form Shell -->
+            <form id="ofertaForm" onsubmit="handleFormSubmit(event)" class="space-y-6">
+
+                <!-- SECTION 1: Client & Generator Info -->
+                <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm">
+                    <div class="flex items-center space-x-3 mb-5 pb-3 border-b border-slate-100">
+                        <div class="w-8 h-8 bg-blue-50 text-asp-blue rounded-lg flex items-center justify-center font-bold text-sm">1</div>
+                        <h3 class="text-base font-bold text-slate-800">Данные заказчика и генератора</h3>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Год / Anul <span class="text-rose-500">*</span></label>
+                            <input type="number" id="Anul" required class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-asp-blue focus:border-asp-blue outline-none transition-all" value="2026">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Бенефициар / Beneficiar <span class="text-rose-500">*</span></label>
+                            <input type="text" id="Beneficiar" required placeholder='например, "MONACTIV" SRL' class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-asp-blue focus:border-asp-blue outline-none transition-all" value='"MONACTIV" SRL'>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Модель генератора / ModelGenerator <span class="text-rose-500">*</span></label>
+                            <input type="text" id="ModelGenerator" required placeholder="например, Altaș AJ-B 660" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-asp-blue focus:border-asp-blue outline-none transition-all" value="Altaș AJ-B 660">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: Quantities & Costs (Linked Rows) -->
+                <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-blue-50 text-asp-blue rounded-lg flex items-center justify-center font-bold text-sm">2</div>
+                            <h3 class="text-base font-bold text-slate-800">Материалы и услуги (Объемы и Цены)</h3>
+                        </div>
+                        <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-medium">Валюта: MDL (без НДС)</span>
+                    </div>
+
+                    <!-- Items Table Grid -->
+                    <div class="space-y-4">
+                        <!-- Header Row -->
+                        <div class="hidden md:grid grid-cols-12 gap-4 px-3 py-2 bg-slate-50 rounded-lg text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <div class="col-span-4">Наименование позиций</div>
+                            <div class="col-span-3">Количество (Объем)</div>
+                            <div class="col-span-2">Цена за ед.</div>
+                            <div class="col-span-3 text-right">Сумма (MDL)</div>
+                        </div>
+
+                        <!-- Row 1: Ulei -->
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center p-3 bg-slate-50/50 hover:bg-slate-50 rounded-xl border border-slate-100 transition-colors">
+                            <div class="md:col-span-4 flex items-center space-x-2">
+                                <i class="fa-solid fa-oil-can text-amber-500 text-sm w-4 text-center"></i>
+                                <span class="text-xs font-semibold text-slate-800">Масло мот. / Ulei (л)</span>
+                            </div>
+                            <div class="md:col-span-3">
+                                <div class="relative">
+                                    <input type="number" step="0.1" id="CantUlei" oninput="calculateTotals()" placeholder="0" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-asp-blue outline-none" value="61">
+                                    <span class="absolute right-2.5 top-2.5 text-xs text-slate-400">л</span>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2">
+                                <input type="number" step="1" id="PriceUlei" oninput="calculateTotals()" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg text-xs text-slate-600" value="97" title="Базовая цена за литр">
+                            </div>
+                            <div class="md:col-span-3">
+                                <div class="relative">
+                                    <input type="number" step="0.01" id="SumaUlei" oninput="manualOverride()" required class="w-full px-3 py-2 text-sm font-semibold text-right bg-blue-50/50 border border-blue-200 rounded-lg text-asp-blue outline-none">
+                                    <span class="absolute left-2 top-2.5 text-[10px] text-slate-400">MDL</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Antigel -->
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center p-3 bg-slate-50/50 hover:bg-slate-50 rounded-xl border border-slate-100 transition-colors">
+                            <div class="md:col-span-4 flex items-center space-x-2">
+                                <i class="fa-solid fa-temperature-arrow-down text-cyan-500 text-sm w-4 text-center"></i>
+                                <span class="text-xs font-semibold text-slate-800">Антифриз / Antigel (л)</span>
+                            </div>
+                            <div class="md:col-span-3">
+                                <div class="relative">
+                                    <input type="number" step="0.1" id="CantAntigel" oninput="calculateTotals()" placeholder="0" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-asp-blue outline-none" value="127">
+                                    <span class="absolute right-2.5 top-2.5 text-xs text-slate-400">л</span>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2">
+                                <input type="number" step="1" id="PriceAntigel" oninput="calculateTotals()" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg text-xs text-slate-600" value="85" title="Базовая цена за литр">
+                            </div>
+                            <div class="md:col-span-3">
+                                <div class="relative">
+                                    <input type="number" step="0.01" id="SumaAntigel" oninput="manualOverride()" required class="w-full px-3 py-2 text-sm font-semibold text-right bg-blue-50/50 border border-blue-200 rounded-lg text-asp-blue outline-none">
+                                    <span class="absolute left-2 top-2.5 text-[10px] text-slate-400">MDL</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 3: Filtru Ulei -->
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center p-3 bg-slate-50/50 hover:bg-slate-50 rounded-xl border border-slate-100 transition-colors">
+                            <div class="md:col-span-4 flex items-center space-x-2">
+                                <i class="fa-solid fa-filter text-indigo-500 text-sm w-4 text-center"></i>
+                                <span class="text-xs font-semibold text-slate-800">Фильтр масляный / FiltruUlei</span>
+                            </div>
+                            <div class="md:col-span-3">
+                                <div class="relative">
+                                    <input type="number" step="1" id="CantFiltruUlei" oninput="calculateTotals()" placeholder="0" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-asp-blue outline-none" value="2">
+                                    <span class="absolute right-2.5 top-2.5 text-xs text-slate-400">шт</span>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2">
+                                <input type="number" step="1" id="PriceFiltruUlei" oninput="calculateTotals()" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg text-xs text-slate-600" value="650" title="Цена за фильтр">
+                            </div>
+                            <div class="md:col-span-3">
+                                <div class="relative">
+                                    <input type="number" step="0.01" id="SumaFiltruUlei" oninput="manualOverride()" required class="w-full px-3 py-2 text-sm font-semibold text-right bg-blue-50/50 border border-blue-200 rounded-lg text-asp-blue outline-none">
+                                    <span class="absolute left-2 top-2.5 text-[10px] text-slate-400">MDL</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 4: Filtru Combustibil -->
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center p-3 bg-slate-50/50 hover:bg-slate-50 rounded-xl border border-slate-100 transition-colors">
+                            <div class="md:col-span-4 flex items-center space-x-2">
+                                <i class="fa-solid fa-gas-pump text-rose-500 text-sm w-4 text-center"></i>
+                                <span class="text-xs font-semibold text-slate-800">Фильтр топливный / FiltruComb</span>
+                            </div>
+                            <div class="md:col-span-3">
+                                <div class="relative">
+                                    <input type="number" step="1" id="CantFiltruComb" oninput="calculateTotals()" placeholder="0" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-asp-blue outline-none" value="2">
+                                    <span class="absolute right-2.5 top-2.5 text-xs text-slate-400">шт</span>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2">
+                                <input type="number" step="1" id="PriceFiltruComb" oninput="calculateTotals()" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg text-xs text-slate-600" value="780" title="Цена за фильтр">
+                            </div>
+                            <div class="md:col-span-3">
+                                <div class="relative">
+                                    <input type="number" step="0.01" id="SumaFiltruComb" oninput="manualOverride()" required class="w-full px-3 py-2 text-sm font-semibold text-right bg-blue-50/50 border border-blue-200 rounded-lg text-asp-blue outline-none">
+                                    <span class="absolute left-2 top-2.5 text-[10px] text-slate-400">MDL</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 5: Servicii TO -->
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center p-3 bg-slate-50/50 hover:bg-slate-50 rounded-xl border border-slate-100 transition-colors">
+                            <div class="md:col-span-4 flex items-center space-x-2">
+                                <i class="fa-solid fa-wrench text-emerald-600 text-sm w-4 text-center"></i>
+                                <span class="text-xs font-semibold text-slate-800">Услуги ТО / Servicii</span>
+                            </div>
+                            <div class="md:col-span-3">
+                                <div class="relative">
+                                    <input type="number" step="1" id="CantServicii" oninput="calculateTotals()" placeholder="0" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-asp-blue outline-none" value="1">
+                                    <span class="absolute right-2.5 top-2.5 text-xs text-slate-400">усл</span>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2">
+                                <input type="number" step="1" id="PriceServicii" oninput="calculateTotals()" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg text-xs text-slate-600" value="4500" title="Стоимость комплекса работ">
+                            </div>
+                            <div class="md:col-span-3">
+                                <div class="relative">
+                                    <input type="number" step="0.01" id="SumaServicii" oninput="manualOverride()" required class="w-full px-3 py-2 text-sm font-semibold text-right bg-blue-50/50 border border-blue-200 rounded-lg text-asp-blue outline-none">
+                                    <span class="absolute left-2 top-2.5 text-[10px] text-slate-400">MDL</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: Final Calculated Totals Banner -->
+                <div class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-lg space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Итоговые расчеты предложения</span>
+                        <div class="flex items-center space-x-2 text-xs text-slate-300">
+                            <span>Количество ТО в год:</span>
+                            <select id="annualMultiplier" onchange="calculateTotals()" class="bg-slate-700 border border-slate-600 text-white rounded px-2 py-0.5 text-xs focus:outline-none">
+                                <option value="2">2 разовое ТО</option>
+                                <option value="1">1 разовое ТО</option>
+                                <option value="3">3 разовое ТО</option>
+                                <option value="4">4 разовое ТО</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                        <!-- Total Single Revision -->
+                        <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700/60">
+                            <span class="text-xs text-slate-400 block mb-1">Итого разовое ТО (PretTotalRev):</span>
+                            <div class="flex items-baseline space-x-2">
+                                <input type="number" step="0.01" id="PretTotalRev" readonly class="bg-transparent text-2xl font-extrabold text-emerald-400 outline-none w-full">
+                                <span class="text-sm font-bold text-slate-400">MDL</span>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1 block">Сумма стоимости материалов и выполнения работ</span>
+                        </div>
+
+                        <!-- Total Annual Maintenance -->
+                        <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700/60">
+                            <span class="text-xs text-slate-400 block mb-1">Итого годовое обслуживание (PretAnual):</span>
+                            <div class="flex items-baseline space-x-2">
+                                <input type="number" step="0.01" id="PretAnual" readonly class="bg-transparent text-2xl font-extrabold text-blue-400 outline-none w-full">
+                                <span class="text-sm font-bold text-slate-400">MDL</span>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1 block">Годовой контракт с учетом регулярных ТО</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Action Buttons -->
+                <div class="flex flex-col sm:flex-row items-center justify-end gap-4 pt-2">
+                    <button type="button" onclick="showView('home')" class="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors">
+                        Отмена
+                    </button>
+                    <button type="submit" class="w-full sm:w-auto px-8 py-3 text-sm font-bold text-white bg-asp-blue hover:bg-asp-hover rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>Сгенерировать PDF</span>
+                    </button>
+                </div>
+
+            </form>
+        </div>
+
+
+        <!-- GENERATION MODAL / OVERLAY (Loading Animation & Output) -->
+        <div id="generationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-slate-100 text-center space-y-6">
+
+                <!-- Loading State View -->
+                <div id="genStateLoading" class="space-y-6 py-4">
+                    <div class="relative w-20 h-20 mx-auto flex items-center justify-center">
+                        <div class="absolute inset-0 border-4 border-blue-100 border-t-asp-blue rounded-full animate-spin"></div>
+                        <i class="fa-solid fa-gear text-2xl text-asp-blue animate-pulse"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800" id="genStepTitle">Формирование документа...</h3>
+                        <p class="text-xs text-slate-500 mt-1" id="genStepDesc">Заполнение тегов шаблона Ofertă_fara_TVA...</p>
+                    </div>
+                    <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div id="genProgressBar" class="bg-asp-blue h-full w-1/4 transition-all duration-500"></div>
+                    </div>
+                </div>
+
+                <!-- Success State View -->
+                <div id="genStateSuccess" class="hidden space-y-6">
+                    <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-sm">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">Документ успешно создан!</h3>
+                        <p class="text-xs text-slate-500 mt-1">Коммерческое предложение для <span id="outBeneficiarName" class="font-semibold text-slate-700"></span> сформировано в формате PDF.</p>
+                    </div>
+
+                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 text-left text-xs space-y-2 font-mono">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Файл:</span>
+                            <span class="text-slate-700 font-bold" id="outFileName">КП - Beneficiar.pdf</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Шаблон:</span>
+                            <span class="text-slate-700">Ofertă_fara_TVA.docx</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Сумма ТО:</span>
+                            <span class="text-emerald-600 font-bold" id="outTotalSum">0 MDL</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                        <button onclick="downloadGeneratedPDF()" class="flex-1 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md transition-colors flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-download"></i>
+                            <span>Скачать PDF</span>
+                        </button>
+                        <button onclick="closeGenModal()" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition-colors">
+                            Закрыть
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+        <!-- EDITABLE TEMPLATE SETTINGS MODAL -->
+        <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 space-y-5">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-sliders text-asp-blue"></i>
+                        <h3 class="font-bold text-slate-800">Настройки цен и метаданных шаблонов</h3>
+                    </div>
+                    <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4 text-xs">
+                    <p class="text-slate-500">
+                        Вы можете изменить базовые расценки по умолчанию, чтобы они автоматически подставлялись при следующих генерациях.
+                    </p>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Баз. цена масла (MDL/л)</label>
+                            <input type="number" id="settingPriceUlei" class="w-full p-2 border border-slate-300 rounded-lg" value="97">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Баз. цена антифриза (MDL/л)</label>
+                            <input type="number" id="settingPriceAntigel" class="w-full p-2 border border-slate-300 rounded-lg" value="85">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Масляный фильтр (MDL/шт)</label>
+                            <input type="number" id="settingPriceFiltruUlei" class="w-full p-2 border border-slate-300 rounded-lg" value="650">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Топливный фильтр (MDL/шт)</label>
+                            <input type="number" id="settingPriceFiltruComb" class="w-full p-2 border border-slate-300 rounded-lg" value="780">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Название вашей компании (Исполнитель)</label>
+                        <input type="text" id="settingCompanyName" class="w-full p-2 border border-slate-300 rounded-lg" value="Servicii Generatoare SRL">
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-3 border-t border-slate-100">
+                    <button onclick="closeSettingsModal()" class="px-4 py-2 bg-slate-100 text-slate-600 font-semibold rounded-lg text-xs">Отмена</button>
+                    <button onclick="saveSettings()" class="px-5 py-2 bg-asp-blue text-white font-bold rounded-lg text-xs">Сохранить</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+                © 2026 Портал Документации Генераторов. Система автогенерации PDF на основе Google Docs / ASP Format.
+            </div>
+            <div class="flex space-x-4 text-slate-400">
+                <span class="hover:text-asp-blue cursor-pointer" onclick="openSettingsModal()">Параметры</span>
+                <span>•</span>
+                <span>Версия 2.4</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- HIDDEN CONTAINER FOR PDF RENDERING -->
+    <div id="pdfRenderCanvas" class="fixed top-[-9999px] left-[-9999px] w-[800px] bg-white p-12 text-slate-900 font-sans leading-relaxed space-y-6">
+        <!-- Official PDF Document Header -->
+        <div class="border-b-2 border-slate-800 pb-4 flex justify-between items-start">
+            <div>
+                <h1 class="text-xl font-bold uppercase tracking-wider text-slate-900" id="pdfTitleCompany">OFERTĂ COMERCIALĂ</h1>
+                <p class="text-xs text-slate-600 mt-0.5">Servicii de Deservire Tehnică Generatoare / ТО Генераторов</p>
+            </div>
+            <div class="text-right text-xs text-slate-500">
+                <div>Anul: <strong id="pdfAnul" class="text-slate-800">2026</strong></div>
+                <div>Data: <strong id="pdfDate" class="text-slate-800">08.11.2026</strong></div>
+            </div>
+        </div>
+
+        <!-- Beneficiary Info Box -->
+        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <h3 class="text-xs font-bold uppercase text-slate-500 mb-2">Informații Beneficiar & Echipament</h3>
+            <div class="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                    <span class="text-slate-500 block">Beneficiar (Заказчик):</span>
+                    <strong id="pdfBeneficiar" class="text-sm text-slate-900">"MONACTIV" SRL</strong>
+                </div>
+                <div>
+                    <span class="text-slate-500 block">Model Generator (Модель):</span>
+                    <strong id="pdfModelGenerator" class="text-sm text-slate-900">Altaș AJ-B 660</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table of Services & Costs -->
+        <div>
+            <h3 class="text-xs font-bold uppercase text-slate-500 mb-2">Calculul Costului Lucrărilor și Materialelor (Без НДС)</h3>
+            <table class="w-full text-xs border-collapse border border-slate-300">
+                <thead>
+                    <tr class="bg-slate-100 text-slate-700 text-left">
+                        <th class="border border-slate-300 p-2">№</th>
+                        <th class="border border-slate-300 p-2">Denumire Materiale / Servicii</th>
+                        <th class="border border-slate-300 p-2 text-center">Cantitate</th>
+                        <th class="border border-slate-300 p-2 text-right">Suma (MDL)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    <tr>
+                        <td class="border border-slate-300 p-2">1</td>
+                        <td class="border border-slate-300 p-2 font-medium">Ulei motor / Масло моторное</td>
+                        <td class="border border-slate-300 p-2 text-center" id="pdfCantUlei">61 l</td>
+                        <td class="border border-slate-300 p-2 text-right font-bold" id="pdfSumaUlei">0 MDL</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-slate-300 p-2">2</td>
+                        <td class="border border-slate-300 p-2 font-medium">Lichid de răcire / Антифриз</td>
+                        <td class="border border-slate-300 p-2 text-center" id="pdfCantAntigel">127 l</td>
+                        <td class="border border-slate-300 p-2 text-right font-bold" id="pdfSumaAntigel">0 MDL</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-slate-300 p-2">3</td>
+                        <td class="border border-slate-300 p-2 font-medium">Filtru Ulei / Фильтр масляный</td>
+                        <td class="border border-slate-300 p-2 text-center" id="pdfCantFiltruUlei">2 buc</td>
+                        <td class="border border-slate-300 p-2 text-right font-bold" id="pdfSumaFiltruUlei">0 MDL</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-slate-300 p-2">4</td>
+                        <td class="border border-slate-300 p-2 font-medium">Filtru Combustibil / Фильтр топливный</td>
+                        <td class="border border-slate-300 p-2 text-center" id="pdfCantFiltruComb">2 buc</td>
+                        <td class="border border-slate-300 p-2 text-right font-bold" id="pdfSumaFiltruComb">0 MDL</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-slate-300 p-2">5</td>
+                        <td class="border border-slate-300 p-2 font-medium">Servicii de mentenanță / Услуги ТО</td>
+                        <td class="border border-slate-300 p-2 text-center" id="pdfCantServicii">1 serv</td>
+                        <td class="border border-slate-300 p-2 text-right font-bold" id="pdfSumaServicii">0 MDL</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totals Banner in PDF -->
+        <div class="bg-slate-900 text-white p-4 rounded-lg flex justify-between items-center text-xs">
+            <div>
+                <span class="text-slate-400 block">TOTAL REVIZIE (Итого за одно ТО):</span>
+                <span class="text-xl font-bold text-emerald-400" id="pdfPretTotalRev">0 MDL</span>
+            </div>
+            <div class="text-right">
+                <span class="text-slate-400 block">COST ANUAL ESTIMAT (Годовое обслуживание):</span>
+                <span class="text-xl font-bold text-blue-400" id="pdfPretAnual">0 MDL</span>
+            </div>
+        </div>
+
+        <!-- Footnote / Signatures -->
+        <div class="pt-8 border-t border-slate-200 grid grid-cols-2 gap-8 text-xs text-slate-600">
+            <div>
+                <span class="block font-bold text-slate-800">Prestator (Исполнитель):</span>
+                <div class="h-12 border-b border-dashed border-slate-300 mb-1"></div>
+                <span id="pdfCompanyNameFooter">Servicii Generatoare SRL</span>
+            </div>
+            <div>
+                <span class="block font-bold text-slate-800">Beneficiar (Заказчик):</span>
+                <div class="h-12 border-b border-dashed border-slate-300 mb-1"></div>
+                <span id="pdfBeneficiarFooter">"MONACTIV" SRL</span>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- APP LOGIC & SCRIPT -->
+    <script>
+        const AUTH_PASSWORD = '1234';
+        const AUTH_SESSION_KEY = 'generatorPortalAuthenticated';
+
+        function unlockPortal() {
+            document.body.classList.remove('auth-pending');
+            document.getElementById('auth-overlay').hidden = true;
+        }
+
+        const authForm = document.getElementById('auth-form');
+        const authPassword = document.getElementById('auth-password');
+        const authError = document.getElementById('auth-error');
+
+        if (sessionStorage.getItem(AUTH_SESSION_KEY) === 'true') {
+            unlockPortal();
+        } else {
+            authPassword.focus();
+        }
+
+        authForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            if (authPassword.value === AUTH_PASSWORD) {
+                sessionStorage.setItem(AUTH_SESSION_KEY, 'true');
+                authError.classList.add('hidden');
+                unlockPortal();
+                return;
+            }
+
+            authError.classList.remove('hidden');
+            authPassword.select();
+        });
+
+        // Data State
+        let generatedData = null;
+
+        // Initialize App on DOM Ready
+        document.addEventListener('DOMContentLoaded', () => {
+            calculateTotals();
+        });
+
+        // Navigation Controller
+        function showView(viewName) {
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-form').classList.add('hidden');
+
+            if (viewName === 'home') {
+                document.getElementById('view-home').classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (viewName === 'form') {
+                document.getElementById('view-form').classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function navigateToForm(templateType) {
+            showView('form');
+        }
+
+        // Real-Time Total Calculations
+        function calculateTotals() {
+            // Fetch Quantities
+            const cantUlei = parseFloat(document.getElementById('CantUlei').value) || 0;
+            const cantAntigel = parseFloat(document.getElementById('CantAntigel').value) || 0;
+            const cantFiltruUlei = parseFloat(document.getElementById('CantFiltruUlei').value) || 0;
+            const cantFiltruComb = parseFloat(document.getElementById('CantFiltruComb').value) || 0;
+            const cantServicii = parseFloat(document.getElementById('CantServicii').value) || 0;
+
+            // Fetch Base Unit Prices
+            const priceUlei = parseFloat(document.getElementById('PriceUlei').value) || 0;
+            const priceAntigel = parseFloat(document.getElementById('PriceAntigel').value) || 0;
+            const priceFiltruUlei = parseFloat(document.getElementById('PriceFiltruUlei').value) || 0;
+            const priceFiltruComb = parseFloat(document.getElementById('PriceFiltruComb').value) || 0;
+            const priceServicii = parseFloat(document.getElementById('PriceServicii').value) || 0;
+
+            // Compute Sums
+            const sumaUlei = (cantUlei * priceUlei).toFixed(2);
+            const sumaAntigel = (cantAntigel * priceAntigel).toFixed(2);
+            const sumaFiltruUlei = (cantFiltruUlei * priceFiltruUlei).toFixed(2);
+            const sumaFiltruComb = (cantFiltruComb * priceFiltruComb).toFixed(2);
+            const sumaServicii = (cantServicii * priceServicii).toFixed(2);
+
+            // Populate Sum Inputs
+            document.getElementById('SumaUlei').value = sumaUlei;
+            document.getElementById('SumaAntigel').value = sumaAntigel;
+            document.getElementById('SumaFiltruUlei').value = sumaFiltruUlei;
+            document.getElementById('SumaFiltruComb').value = sumaFiltruComb;
+            document.getElementById('SumaServicii').value = sumaServicii;
+
+            // Calculate Grand Totals
+            const pretTotalRev = (
+                parseFloat(sumaUlei) +
+                parseFloat(sumaAntigel) +
+                parseFloat(sumaFiltruUlei) +
+                parseFloat(sumaFiltruComb) +
+                parseFloat(sumaServicii)
+            ).toFixed(2);
+
+            const multiplier = parseInt(document.getElementById('annualMultiplier').value) || 2;
+            const pretAnual = (parseFloat(pretTotalRev) * multiplier).toFixed(2);
+
+            document.getElementById('PretTotalRev').value = pretTotalRev;
+            document.getElementById('PretAnual').value = pretAnual;
+        }
+
+        // Manual Override handler if user manually edits Suma fields
+        function manualOverride() {
+            const sumaUlei = parseFloat(document.getElementById('SumaUlei').value) || 0;
+            const sumaAntigel = parseFloat(document.getElementById('SumaAntigel').value) || 0;
+            const sumaFiltruUlei = parseFloat(document.getElementById('SumaFiltruUlei').value) || 0;
+            const sumaFiltruComb = parseFloat(document.getElementById('SumaFiltruComb').value) || 0;
+            const sumaServicii = parseFloat(document.getElementById('SumaServicii').value) || 0;
+
+            const pretTotalRev = (sumaUlei + sumaAntigel + sumaFiltruUlei + sumaFiltruComb + sumaServicii).toFixed(2);
+            const multiplier = parseInt(document.getElementById('annualMultiplier').value) || 2;
+            const pretAnual = (parseFloat(pretTotalRev) * multiplier).toFixed(2);
+
+            document.getElementById('PretTotalRev').value = pretTotalRev;
+            document.getElementById('PretAnual').value = pretAnual;
+        }
+
+        // Form Reset
+        function resetForm() {
+            document.getElementById('ofertaForm').reset();
+            document.getElementById('Anul').value = '2026';
+            document.getElementById('Beneficiar').value = '"MONACTIV" SRL';
+            document.getElementById('ModelGenerator').value = 'Altaș AJ-B 660';
+            document.getElementById('CantUlei').value = '61';
+            document.getElementById('CantAntigel').value = '127';
+            document.getElementById('CantFiltruUlei').value = '2';
+            document.getElementById('CantFiltruComb').value = '2';
+            document.getElementById('CantServicii').value = '1';
+            calculateTotals();
+        }
+
+        // Form Submit & PDF Generation Pipeline
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            // Store current state
+            generatedData = {
+                Anul: document.getElementById('Anul').value,
+                Beneficiar: document.getElementById('Beneficiar').value,
+                ModelGenerator: document.getElementById('ModelGenerator').value,
+                CantUlei: document.getElementById('CantUlei').value,
+                CantAntigel: document.getElementById('CantAntigel').value,
+                CantFiltruUlei: document.getElementById('CantFiltruUlei').value,
+                CantFiltruComb: document.getElementById('CantFiltruComb').value,
+                CantServicii: document.getElementById('CantServicii').value,
+                SumaUlei: document.getElementById('SumaUlei').value,
+                SumaAntigel: document.getElementById('SumaAntigel').value,
+                SumaFiltruUlei: document.getElementById('SumaFiltruUlei').value,
+                SumaFiltruComb: document.getElementById('SumaFiltruComb').value,
+                SumaServicii: document.getElementById('SumaServicii').value,
+                PretTotalRev: document.getElementById('PretTotalRev').value,
+                PretAnual: document.getElementById('PretAnual').value,
+                Date: new Date().toLocaleDateString('ru-RU')
+            };
+
+            // Show Loading Modal
+            const modal = document.getElementById('generationModal');
+            const loadingState = document.getElementById('genStateLoading');
+            const successState = document.getElementById('genStateSuccess');
+            const progressBar = document.getElementById('genProgressBar');
+            const title = document.getElementById('genStepTitle');
+            const desc = document.getElementById('genStepDesc');
+
+            modal.classList.remove('hidden');
+            loadingState.classList.remove('hidden');
+            successState.classList.add('hidden');
+
+            // Animated Simulation Steps
+            progressBar.style.width = '25%';
+            title.textContent = 'Проверка данных...';
+            desc.textContent = 'Валидация полей Beneficiar и значений сумм...';
+
+            setTimeout(() => {
+                progressBar.style.width = '60%';
+                title.textContent = 'Заполнение шаблона Ofertă_fara_TVA...';
+                desc.textContent = 'Подстановка тегов {{Beneficiar}}, {{ModelGenerator}}, {{PretTotalRev}}...';
+            }, 800);
+
+            setTimeout(() => {
+                progressBar.style.width = '90%';
+                title.textContent = 'Конвертация в PDF...';
+                desc.textContent = 'Формирование печатного файла в высоком качестве...';
+            }, 1600);
+
+            setTimeout(() => {
+                progressBar.style.width = '100%';
+                // Show Success State
+                loadingState.classList.add('hidden');
+                successState.classList.remove('hidden');
+
+                document.getElementById('outBeneficiarName').textContent = generatedData.Beneficiar;
+                document.getElementById('outFileName').textContent = `КП - ${generatedData.Beneficiar.replace(/"/g, '')} - ${generatedData.ModelGenerator}.pdf`;
+                document.getElementById('outTotalSum').textContent = `${generatedData.PretTotalRev} MDL`;
+            }, 2200);
+        }
+
+        // Download Generated PDF using jsPDF + HTML2Canvas
+        function downloadGeneratedPDF() {
+            if (!generatedData) return;
+
+            // Update hidden PDF canvas DOM elements with generated data
+            document.getElementById('pdfAnul').textContent = generatedData.Anul;
+            document.getElementById('pdfDate').textContent = generatedData.Date;
+            document.getElementById('pdfBeneficiar').textContent = generatedData.Beneficiar;
+            document.getElementById('pdfBeneficiarFooter').textContent = generatedData.Beneficiar;
+            document.getElementById('pdfModelGenerator').textContent = generatedData.ModelGenerator;
+
+            document.getElementById('pdfCantUlei').textContent = `${generatedData.CantUlei} л`;
+            document.getElementById('pdfSumaUlei').textContent = `${generatedData.SumaUlei} MDL`;
+
+            document.getElementById('pdfCantAntigel').textContent = `${generatedData.CantAntigel} л`;
+            document.getElementById('pdfSumaAntigel').textContent = `${generatedData.SumaAntigel} MDL`;
+
+            document.getElementById('pdfCantFiltruUlei').textContent = `${generatedData.CantFiltruUlei} шт`;
+            document.getElementById('pdfSumaFiltruUlei').textContent = `${generatedData.SumaFiltruUlei} MDL`;
+
+            document.getElementById('pdfCantFiltruComb').textContent = `${generatedData.CantFiltruComb} шт`;
+            document.getElementById('pdfSumaFiltruComb').textContent = `${generatedData.SumaFiltruComb} MDL`;
+
+            document.getElementById('pdfCantServicii').textContent = `${generatedData.CantServicii} усл`;
+            document.getElementById('pdfSumaServicii').textContent = `${generatedData.SumaServicii} MDL`;
+
+            document.getElementById('pdfPretTotalRev').textContent = `${generatedData.PretTotalRev} MDL`;
+            document.getElementById('pdfPretAnual').textContent = `${generatedData.PretAnual} MDL`;
+
+            const pdfCanvasElement = document.getElementById('pdfRenderCanvas');
+
+            // Render PDF canvas using html2canvas & jsPDF
+            html2canvas(pdfCanvasElement, {
+                scale: 2,
+                useCORS: true
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                const cleanName = generatedData.Beneficiar.replace(/[^a-zA-Z0-9а-яА-Я moldova]/g, "_");
+                pdf.save(`Oferta_${cleanName}_${generatedData.Anul}.pdf`);
+            }).catch(err => {
+                console.error("PDF generation fallback:", err);
+                alert("Ошибка генерации графического PDF. Документ будет скачан в виде текстового отчета.");
+            });
+        }
+
+        function closeGenModal() {
+            document.getElementById('generationModal').classList.add('hidden');
+        }
+
+        // Settings Modal Handlers
+        function openSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function saveSettings() {
+            const priceUlei = document.getElementById('settingPriceUlei').value;
+            const priceAntigel = document.getElementById('settingPriceAntigel').value;
+            const priceFiltruUlei = document.getElementById('settingPriceFiltruUlei').value;
+            const priceFiltruComb = document.getElementById('settingPriceFiltruComb').value;
+            const companyName = document.getElementById('settingCompanyName').value;
+
+            document.getElementById('PriceUlei').value = priceUlei;
+            document.getElementById('PriceAntigel').value = priceAntigel;
+            document.getElementById('PriceFiltruUlei').value = priceFiltruUlei;
+            document.getElementById('PriceFiltruComb').value = priceFiltruComb;
+            document.getElementById('pdfCompanyNameFooter').textContent = companyName;
+
+            calculateTotals();
+            closeSettingsModal();
+        }
+    </script>
+</body>
+</html>
